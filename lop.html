@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Danh sách sinh viên</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: Arial; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+        th { background: #f2f2f2; }
+    </style>
+</head>
+<body>
+
+<h2>Danh sách sinh viên</h2>
+
+<input type="file" id="fileInput" accept=".xlsx" />
+
+<table id="table">
+    <thead>
+        <tr>
+            <th>Họ tên</th>
+            <th>MSV</th>
+            <th>Email</th>
+            <th>Khoa</th>
+            <th>Khóa học</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<script>
+class SinhVien {
+    constructor(ho, tenDem, ten, msv, khoa, khoaHoc) {
+        this.ho = ho;
+        this.tenDem = tenDem;
+        this.ten = ten;
+        this.msv = msv;
+        this.khoa = khoa;
+        this.khoaHoc = khoaHoc;
+    }
+
+    // tạo email
+    taoEmail() {
+        let ten = this.ten.toLowerCase();
+        let initials = (this.ho[0] + this.tenDem[0]).toLowerCase();
+        return `${ten}${initials}.${this.msv.toLowerCase()}@hvnh.edu.vn`;
+    }
+
+    getHoTen() {
+        return `${this.ho} ${this.tenDem} ${this.ten}`;
+    }
+}
+
+// đọc file excel
+document.getElementById("fileInput").addEventListener("change", function(e) {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet);
+
+        hienThi(json);
+    };
+
+    reader.readAsArrayBuffer(file);
+});
+
+function hienThi(data) {
+    const tbody = document.querySelector("#table tbody");
+    tbody.innerHTML = "";
+
+    data.forEach(row => {
+        const sv = new SinhVien(
+            row["Họ"],
+            row["Tên đệm"],
+            row["Tên"],
+            row["MSV"],
+            row["Khoa"],
+            row["Khóa học"]
+        );
+
+        const tr = `
+            <tr>
+                <td>${sv.getHoTen()}</td>
+                <td>${sv.msv}</td>
+                <td>${sv.taoEmail()}</td>
+                <td>${sv.khoa}</td>
+                <td>${sv.khoaHoc}</td>
+            </tr>
+        `;
+
+        tbody.innerHTML += tr;
+    });
+}
+</script>
+
+</body>
+</html>
