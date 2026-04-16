@@ -1,102 +1,119 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <title>Danh sách sinh viên</title>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-    <style>
-        body { font-family: Arial; }
-        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-        th { background: #f2f2f2; }
-    </style>
+<meta charset="UTF-8">
+<title>Danh sách SV</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
+
 <body>
 
-<h2>Danh sách sinh viên</h2>
+<h2>Đọc file Excel</h2>
+<input type="file" id="fileInput">
 
-<input type="file" id="fileInput" accept=".xlsx" />
-
-<table id="table">
+<table border="1" width="100%">
     <thead>
         <tr>
-            <th>Họ tên</th>
+            <th>STT</th>
             <th>MSV</th>
+            <th>Họ tên</th>
             <th>Email</th>
+            <th>Khóa</th>
             <th>Khoa</th>
-            <th>Khóa học</th>
         </tr>
     </thead>
-    <tbody></tbody>
+    <tbody id="tableBody"></tbody>
 </table>
 
 <script>
-class SinhVien {
-    constructor(ho, tenDem, ten, msv, khoa, khoaHoc) {
-        this.ho = ho;
-        this.tenDem = tenDem;
-        this.ten = ten;
+class Student {
+    constructor(stt, msv, name) {
+        this.stt = stt;
         this.msv = msv;
-        this.khoa = khoa;
-        this.khoaHoc = khoaHoc;
+        this.name = name;
+        this.email = this.createEmail();
+        this.course = this.getCourse();
+        this.faculty = this.getFaculty();
     }
 
-    // tạo email
-    taoEmail() {
-        let ten = this.ten.toLowerCase();
-        let initials = (this.ho[0] + this.tenDem[0]).toLowerCase();
-        return `${ten}${initials}.${this.msv.toLowerCase()}@hvnh.edu.vn`;
+    // Bỏ dấu tiếng Việt
+    removeVN(str) {
+        return str.normalize("NFD")
+                  .replace(/[\u0300-\u036f]/g, "")
+                  .toLowerCase();
     }
 
-    getHoTen() {
-        return `${this.ho} ${this.tenDem} ${this.ten}`;
+    // Tạo email
+    createEmail() {
+        let parts = this.removeVN(this.name).trim().split(/\s+/);
+        let last = parts.pop(); // tên
+        let initials = parts.map(p => p[0]).join(""); // chữ cái đầu
+        return `${last}${initials}.${this.msv.toLowerCase()}@hvnh.edu.vn`;
+    }
+
+    // Lấy khóa học (2 số đầu)
+    getCourse() {
+        let prefix = this.msv.substring(0, 2);
+        return "Khóa " + prefix;
+    }
+
+    // Lấy khoa (3 số giữa: vị trí 3-5)
+    getFaculty() {
+        let code = this.msv.substring(3, 6);
+
+        switch(code) {
+            case "404": return "Khoa Công nghệ thông tin & Kinh tế số";
+            case "401": return "Khoa Tài chính";
+            default: return "Không xác định";
+        }
     }
 }
 
-// đọc file excel
-document.getElementById("fileInput").addEventListener("change", function(e) {
-    const file = e.target.files[0];
-    const reader = new FileReader();
+document.getElementById("fileInput").onchange = function(e) {
+    let file = e.target.files[0];
+    if (!file) return;
 
-    reader.onload = function(e) {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: "array" });
+    let reader = new FileReader();
 
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(sheet);
+    reader.onload = function(evt) {
+        let data = new Uint8Array(evt.target.result);
+        let wb = XLSX.read(data, {type: "array"});
+        let sheet = wb.Sheets[wb.SheetNames[0]];
+        let rows = XLSX.utils.sheet_to_json(sheet, {header: 1});
 
-        hienThi(json);
+        let result = [];
+
+        for (let i = 1; i < rows.length; i++) {
+            let [stt, msv, name] = rows[i];
+
+            if (msv && name) {
+                result.push(new Student(stt, msv, name));
+            }
+        }
+
+        showTable(result);
     };
 
     reader.readAsArrayBuffer(file);
-});
+};
 
-function hienThi(data) {
-    const tbody = document.querySelector("#table tbody");
-    tbody.innerHTML = "";
+function showTable(list) {
+    let html = "";
 
-    data.forEach(row => {
-        const sv = new SinhVien(
-            row["Họ"],
-            row["Tên đệm"],
-            row["Tên"],
-            row["MSV"],
-            row["Khoa"],
-            row["Khóa học"]
-        );
-
-        const tr = `
+    list.forEach(s => {
+        html += `
             <tr>
-                <td>${sv.getHoTen()}</td>
-                <td>${sv.msv}</td>
-                <td>${sv.taoEmail()}</td>
-                <td>${sv.khoa}</td>
-                <td>${sv.khoaHoc}</td>
+                <td>${s.stt}</td>
+                <td>${s.msv}</td>
+                <td>${s.name}</td>
+                <td>${s.email}</td>
+                <td>${s.course}</td>
+                <td>${s.faculty}</td>
             </tr>
         `;
-
-        tbody.innerHTML += tr;
     });
+
+    document.getElementById("tableBody").innerHTML = html;
 }
 </script>
 
